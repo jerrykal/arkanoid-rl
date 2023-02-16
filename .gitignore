@@ -10,7 +10,7 @@ venv/*
 .vs/*
 .vscode/*
 ml_play*.py
-ml/*
+# ml/*
 !ml_play_template.py
 !ml_play_manual.py
 cmd/
@@ -153,3 +153,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Pyenv local version
+.python-version
