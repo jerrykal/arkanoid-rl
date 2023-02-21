@@ -3,7 +3,6 @@ from collections import deque, namedtuple
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 from ml.model import QNet
 
@@ -17,10 +16,11 @@ class DQN:
         n_actions,
         device="cpu",
         lr=1e-3,
+        alpha=0.99,
         reward_decay=0.99,
         target_replace_iter=1000,
-        memory_size=10000,
-        batch_size=64,
+        memory_size=1000000,
+        batch_size=32,
     ):
         self.state_size = state_size
         self.n_actions = n_actions
@@ -32,7 +32,8 @@ class DQN:
         self.qnet = QNet(state_size, n_actions).to(device)
         self.qnet_target = QNet(state_size, n_actions).to(device)
         self.qnet_target.eval()
-        self.optimizer = torch.optim.Adam(self.qnet.parameters(), lr=lr)
+        self.optimizer = torch.optim.RMSprop(self.qnet.parameters(), lr=lr, alpha=alpha)
+        self.criterion = torch.nn.MSELoss()
 
         self.memory = deque(maxlen=memory_size)
 
@@ -50,9 +51,13 @@ class DQN:
     def load_model(self, fname):
         model_path = f"./ml/model/{fname}"
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"ERROR: No model saved under the given path: {model_path}")
+            raise FileNotFoundError(
+                f"ERROR: No model saved under the given path: {model_path}"
+            )
 
-        self.qnet.load_state_dict(torch.load(model_path)["QNet"])
+        self.qnet.load_state_dict(
+            torch.load(model_path, map_location=self.device)["QNet"]
+        )
 
     def store_transition(self, s, a, r, d, s_):
         self.memory.append(Experience(s, a, r, d, s_))
@@ -89,8 +94,8 @@ class DQN:
         q_eval = self.qnet(mb_states).gather(-1, mb_actions.unsqueeze(-1)).squeeze(-1)
         with torch.no_grad():
             q_next = self.qnet_target(mb_next_states).max(-1).values
-        q_target = mb_rewards + (1.0 - mb_dones) * self.reward_decay * q_next
-        loss = F.mse_loss(q_eval, q_target)
+            q_target = mb_rewards + (1.0 - mb_dones) * self.reward_decay * q_next
+        loss = self.criterion(q_eval, q_target)
 
         # Updata parameters
         self.optimizer.zero_grad()

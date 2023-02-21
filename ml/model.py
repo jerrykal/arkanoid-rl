@@ -10,9 +10,13 @@ class QNet(nn.Module):
             nn.ReLU(),
         )
         self.fc_value = nn.Sequential(
+            nn.Linear(512, 512),
+            nn.ReLU(),
             nn.Linear(512, 1),
         )
         self.fc_advantage = nn.Sequential(
+            nn.Linear(512, 512),
+            nn.ReLU(),
             nn.Linear(512, n_actions),
         )
 
