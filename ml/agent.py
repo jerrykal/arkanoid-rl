@@ -1,10 +1,11 @@
 import os
-from collections import deque, namedtuple
+from collections import namedtuple
 
 import numpy as np
 import torch
 
 from ml.model import QNet
+from ml.prioritized_memory import Memory
 
 Experience = namedtuple("Experience", field_names=("s", "a", "r", "d", "s_"))
 
@@ -35,7 +36,7 @@ class DQN:
         self.optimizer = torch.optim.RMSprop(self.qnet.parameters(), lr=lr, alpha=alpha)
         self.criterion = torch.nn.MSELoss()
 
-        self.memory = deque(maxlen=memory_size)
+        self.memory = Memory(memory_size)
 
         self.learn_steps = 0
 
@@ -60,7 +61,22 @@ class DQN:
         )
 
     def store_transition(self, s, a, r, d, s_):
-        self.memory.append(Experience(s, a, r, d, s_))
+        exp = Experience(s, a, r, d, s_)
+        with torch.no_grad():
+            s = torch.FloatTensor(s).unsqueeze(0).to(self.device)
+            a = torch.LongTensor([a]).unsqueeze(0).to(self.device)
+            r = torch.FloatTensor([r]).unsqueeze(0).to(self.device)
+            d = torch.FloatTensor([int(d)]).unsqueeze(0).to(self.device)
+            s_ = torch.FloatTensor(s_).unsqueeze(0).to(self.device)
+
+            q_eval = self.qnet(s).gather(-1, a).squeeze(-1)
+            q_next = self.qnet_target(s_).max(-1).values
+            q_target = r + (1.0 - d) * self.reward_decay * q_next
+
+            # TD error
+            error = abs(q_eval - q_target)
+
+        self.memory.add(error.item(), exp)
 
     def choose_action(self, state, epsilon=0):
         if np.random.random() <= epsilon:
@@ -78,12 +94,10 @@ class DQN:
             self.qnet_target.load_state_dict(self.qnet.state_dict())
 
         # Sample minibatch of transition datas from memory
-        sample_indices = np.random.choice(
-            len(self.memory), self.batch_size, replace=False
-        )
-        mb_states, mb_actions, mb_rewards, mb_dones, mb_next_states = zip(
-            *[self.memory[i] for i in sample_indices]
-        )
+        mb, idxs, is_weights = self.memory.sample(self.batch_size)
+        is_weights = torch.FloatTensor(np.array(is_weights)).to(self.device)
+
+        mb_states, mb_actions, mb_rewards, mb_dones, mb_next_states = zip(*mb)
         mb_states = torch.FloatTensor(np.array(mb_states)).to(self.device)
         mb_actions = torch.LongTensor(np.array(mb_actions)).to(self.device)
         mb_rewards = torch.FloatTensor(np.array(mb_rewards)).to(self.device)
@@ -95,7 +109,13 @@ class DQN:
         with torch.no_grad():
             q_next = self.qnet_target(mb_next_states).max(-1).values
             q_target = mb_rewards + (1.0 - mb_dones) * self.reward_decay * q_next
-        loss = self.criterion(q_eval, q_target)
+
+            # Update priority
+            errors = abs(q_eval.detach() - q_target)
+            for idx, error in zip(idxs, errors):
+                self.memory.update(idx, error.item())
+
+        loss = (is_weights * self.criterion(q_eval, q_target)).mean()
 
         # Updata parameters
         self.optimizer.zero_grad()
