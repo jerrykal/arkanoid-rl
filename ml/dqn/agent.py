@@ -4,8 +4,8 @@ from collections import namedtuple
 import numpy as np
 import torch
 
-from ml.model import QNet
-from ml.prioritized_memory import Memory
+from ml.dqn.model import QNet
+from ml.dqn.prioritized_memory import Memory
 
 Experience = namedtuple("Experience", field_names=("s", "a", "r", "d", "s_"))
 
@@ -21,7 +21,7 @@ class DQN:
         reward_decay=0.99,
         target_replace_iter=1000,
         memory_size=1000000,
-        batch_size=32,
+        batch_size=128,
     ):
         self.state_size = state_size
         self.n_actions = n_actions

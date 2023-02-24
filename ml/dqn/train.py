@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from ml.agent import DQN
+from ml.dqn.agent import DQN
 
 
 def get_epsilon(total_steps, epsilon_max=1.0, epsilon_min=0.02, epsilon_decay=1000000):
@@ -50,7 +50,7 @@ class MLPlay:
         self.best_mean = -100
 
     def reset(self):
-        # Saving best model
+        # Saveing the best model
         self.reward_history.append(self.episode_reward)
         mean_reward = np.mean(self.reward_history[-30:])
         if mean_reward > self.best_mean:
@@ -59,6 +59,13 @@ class MLPlay:
                 f"Mean reward updated {self.best_mean:.3f} -> {mean_reward:3f}, model saved.",
             )
             self.best_mean = mean_reward
+
+        # Saving checkpoint model every 50 episode
+        if self.episode_num % 50 == 0:
+            self.agent.save_model(
+                f"checkpoint_{self.total_steps:03d}.pt", self.episode_num
+            )
+            print(f"Checkpoint model saved on episode {self.episode_num}.")
 
         # Saving tensorboard summary
         self.summary_writer.add_scalar(
@@ -177,11 +184,5 @@ class MLPlay:
 
         self.episode_len += 1
         self.total_steps += 1
-        if self.total_steps % 10000 == 0:
-            # Saving models every 10000 steps
-            self.agent.save_model(
-                f"checkpoint_{self.total_steps:07d}.pt", self.total_steps
-            )
-            print(f"Checkpoint model saved on step {self.total_steps}.")
 
         return reset or self.action_map[self.action]
