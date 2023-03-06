@@ -27,7 +27,9 @@ class MLPlay:
         self.state_size = 410
         self.agent = DQN(self.state_size, self.n_actions, self.device)
 
-        if os.path.exists("./ml/model/pretrained.pt"):
+        if os.path.exists(
+            os.path.join(os.path.dirname(__file__), "model", "pretrained.pt")
+        ):
             self.agent.load_model("pretrained.pt")
             print("Pretrained model loaded.")
 
@@ -40,7 +42,9 @@ class MLPlay:
         self.action = None
 
         self.summary_writer = SummaryWriter(
-            log_dir="./ml/summary/" + time.strftime("%b%d_%Y_%H-%M-%S")
+            log_dir=os.path.join(
+                os.path.dirname(__file__), "summary", time.strftime("%b%d_%Y_%H-%M-%S")
+            )
         )
         self.episode_loss = 0
         self.episode_reward = 0
@@ -52,9 +56,9 @@ class MLPlay:
     def reset(self):
         # Saveing the best model
         self.reward_history.append(self.episode_reward)
-        mean_reward = np.mean(self.reward_history[-30:])
+        mean_reward = np.mean(self.reward_history[-10:])
         if mean_reward > self.best_mean:
-            self.agent.save_model("best.pt", self.total_steps)
+            self.agent.save_model("best.pt", self.episode_num)
             print(
                 f"Mean reward updated {self.best_mean:.3f} -> {mean_reward:3f}, model saved.",
             )
@@ -63,7 +67,7 @@ class MLPlay:
         # Saving checkpoint model every 50 episode
         if self.episode_num % 50 == 0:
             self.agent.save_model(
-                f"checkpoint_{self.total_steps:03d}.pt", self.episode_num
+                f"checkpoint_{self.episode_num:03d}.pt", self.episode_num
             )
             print(f"Checkpoint model saved on episode {self.episode_num}.")
 

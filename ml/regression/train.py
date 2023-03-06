@@ -9,7 +9,7 @@ from sklearn.tree import DecisionTreeRegressor
 
 
 def main():
-    path = os.path.join(os.path.dirname(__file__), "log/")
+    path = os.path.join(os.path.dirname(__file__), "log")
 
     log_files = os.listdir(path)
     data_set = []
@@ -33,8 +33,8 @@ def main():
     model.fit(features, targets)
 
     # Save model
-    if not os.path.exists(os.path.dirname(__file__) + "/save"):
-        os.makedirs(os.path.dirname(__file__) + "/save")
+    if not os.path.exists(os.path.join(os.path.dirname(__file__), "save")):
+        os.makedirs(os.path.join(os.path.dirname(__file__), "save"))
     with open(
         os.path.join(os.path.dirname(__file__), "save", "model.pickle"), "wb"
     ) as f:

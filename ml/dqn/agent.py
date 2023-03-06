@@ -21,7 +21,7 @@ class DQN:
         reward_decay=0.99,
         target_replace_iter=1000,
         memory_size=1000000,
-        batch_size=128,
+        batch_size=64,
     ):
         self.state_size = state_size
         self.n_actions = n_actions
@@ -41,7 +41,7 @@ class DQN:
         self.learn_steps = 0
 
     def save_model(self, fname, iter):
-        save_dir = "./ml/model"
+        save_dir = os.path.join(os.path.dirname(__file__), "model")
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         torch.save(
@@ -50,7 +50,7 @@ class DQN:
         )
 
     def load_model(self, fname):
-        model_path = f"./ml/model/{fname}"
+        model_path = os.path.join(os.path.dirname(__file__), "model", fname)
         if not os.path.exists(model_path):
             raise FileNotFoundError(
                 f"ERROR: No model saved under the given path: {model_path}"

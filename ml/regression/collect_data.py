@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 
 root_folder = os.path.abspath(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -86,10 +87,11 @@ class MLPlay:
         self.data["targets"].append(y)
 
     def flush_to_file(self):
-        filename = time.strftime(f"level_{self.level:02d}") + ".pickle"
-        if not os.path.exists(os.path.dirname(__file__) + "/log"):
-            os.makedirs(os.path.dirname(__file__) + "/log")
-        filepath = os.path.join(os.path.dirname(__file__), "./log/" + filename)
+        file_name = f"level_{self.level:02d}" + ".pickle"
+        save_dir = os.path.join(os.path.dirname(__file__), "log")
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        filepath = os.path.join(os.path.dirname(__file__), "log", file_name)
         with open(filepath, "wb") as f:
             pickle.dump(self.data, f)
 
